@@ -17,17 +17,19 @@ def read_root():
 
 @app.post('/file/upload')
 async def upload_file(file: UploadFile):
-   
-    df = pd.read_csv(file.file)
+    chunksize = 20000
+    df = pd.read_csv(file.file, chunksize=chunksize, iterator=True)
     new_columns = {'Song':'Song', 'Date': 'Date', 'Number of Plays':'Total Number of Plays for Date'}
-    new_df = df.rename(columns=new_columns)
+    #new_df = df.rename(columns=new_columns)
     new_filename = "{}_{}.csv".format(os.path.splitext(file.filename)[0],timestr)
-    
-    output = new_df.groupby(['Song','Date'])['Total Number of Plays for Date'].sum()
-
+    outputf = pd.DataFrame(columns=['Song','Date','Total Number of Plays for Date'])
+    for chunk in df:
+        new_ch =chunk.rename(columns=new_columns)   
+        output =  new_ch.groupby(['Song','Date'])['Total Number of Plays for Date'].sum()
+        outputf = pd.concat([outputf, output] )
     pip = os.getpid()
     print(pip)
-    output.to_csv(new_filename)
+    outputf.to_csv(new_filename)
     return {"filename": new_filename, "PIP": pip}
 
 @app.get("/file/download/{name}")
